@@ -1,20 +1,17 @@
-import streamlit as st
-import os
 
-from dotenv import load_dotenv
+import streamlit as st
+from pathlib import Path
 
 from rag_engine import (
+    find_pdf_files,
     load_vector_store,
     retrieve_context,
     generate_answer
 )
 
-# Load environment variables
-load_dotenv()
-
 
 # --------------------------------
-# 1. PAGE CONFIGURATION
+# 1. PAGE SETTINGS
 # --------------------------------
 
 st.set_page_config(
@@ -23,16 +20,18 @@ st.set_page_config(
     layout="wide"
 )
 
+BASE_DIR = Path(__file__).resolve().parent
+
 
 # --------------------------------
-# 2. LOAD RAG DATABASE
+# 2. LOAD RAG SYSTEM
 # --------------------------------
 
 @st.cache_resource
 def initialize_rag():
 
     index, chunks, model = load_vector_store(
-        "karnataka_docs"
+        str(BASE_DIR)
     )
 
     return index, chunks, model
@@ -50,8 +49,6 @@ with st.sidebar:
 
     st.divider()
 
-    # PROJECT INFORMATION
-
     st.subheader("📌 About Project")
 
     st.write(
@@ -64,83 +61,41 @@ with st.sidebar:
 
     st.divider()
 
-    # TECHNOLOGIES
-
     st.subheader("💻 Technologies Used")
 
-    st.write(
-        """
-        🐍 Python
-
-        🔍 Retrieval Augmented Generation (RAG)
-
-        🤖 Large Language Model (LLM)
-
-        🧠 Sentence Transformers
-
-        🗃️ FAISS Vector Database
-
-        🌐 Streamlit
-        """
-    )
+    st.write("🐍 Python")
+    st.write("🔍 Retrieval Augmented Generation")
+    st.write("🤖 Large Language Model")
+    st.write("🧠 Sentence Transformers")
+    st.write("🗃️ FAISS Vector Database")
+    st.write("🌐 Streamlit")
 
     st.divider()
-
-    # RAG PIPELINE
 
     st.subheader("🔄 RAG Pipeline")
 
-    st.write(
-        """
-        📄 1. Load PDF Files
-
-        ✂️ 2. Create Text Chunks
-
-        🧠 3. Generate Embeddings
-
-        🗃️ 4. Store in Vector Database
-
-        🔍 5. Retrieve Relevant Information
-
-        🤖 6. Generate Answer
-        """
-    )
+    st.write("1. Load PDF Files")
+    st.write("2. Create Text Chunks")
+    st.write("3. Generate Embeddings")
+    st.write("4. Store in FAISS Database")
+    st.write("5. Retrieve Relevant Information")
+    st.write("6. Generate Answer using LLM")
 
     st.divider()
-
-    # karnataka_docs
 
     st.subheader("📚 Knowledge Base")
 
-    st.write(
-        """
-        📄 Adventure Tourism
-
-        📄 Heritage, History and Culture
-
-        📄 Food and Cuisine
-
-        📄 Wildlife and Safari
-        """
-    )
+    st.write("🏕️ Adventure Tourism")
+    st.write("🏛️ Heritage, History and Culture")
+    st.write("🍛 Food and Cuisine")
+    st.write("🐅 Wildlife and Safari")
 
     st.divider()
 
-    # TEAM MEMBERS
-
     st.subheader("👥 Team Members")
 
-    st.write(
-        """
-        1. Jyothi H G
-
-        2. Aishwarya
-
-        3. Chaithra.B.H
-
-        4. Madhav
-        """
-    )
+    for number in range(1, 6):
+        st.write(f"{number}. Member {number}")
 
 
 # --------------------------------
@@ -166,7 +121,29 @@ st.divider()
 
 
 # --------------------------------
-# 5. API KEY
+# 5. CHECK PDF FILES
+# --------------------------------
+
+pdf_files = find_pdf_files(str(BASE_DIR))
+
+if pdf_files:
+
+    st.sidebar.success(
+        f"{len(pdf_files)} PDF files found"
+    )
+
+else:
+
+    st.warning(
+        "No PDF files found. Please upload your four "
+        "PDF files inside the karnataka_docs folder."
+    )
+
+    st.stop()
+
+
+# --------------------------------
+# 6. GET GROQ API KEY
 # --------------------------------
 
 try:
@@ -175,11 +152,21 @@ try:
 
 except Exception:
 
-    api_key = os.getenv("GROQ_API_KEY")
+    api_key = None
+
+
+if not api_key:
+
+    st.error(
+        "Groq API key is missing. Please add it in "
+        "Streamlit Settings → Secrets."
+    )
+
+    st.stop()
 
 
 # --------------------------------
-# 6. CHAT HISTORY
+# 7. CHAT HISTORY
 # --------------------------------
 
 if "messages" not in st.session_state:
@@ -187,17 +174,9 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 
 
-# DISPLAY OLD MESSAGES
-
 for message in st.session_state.messages:
 
-    if message["role"] == "user":
-
-        avatar = "🧭"
-
-    else:
-
-        avatar = "🏛️"
+    avatar = "🧭" if message["role"] == "user" else "🏛️"
 
     with st.chat_message(
         message["role"],
@@ -208,7 +187,7 @@ for message in st.session_state.messages:
 
 
 # --------------------------------
-# 7. CHAT INPUT
+# 8. CHAT INPUT
 # --------------------------------
 
 question = st.chat_input(
@@ -217,16 +196,10 @@ question = st.chat_input(
 
 
 # --------------------------------
-# 8. GENERATE RESPONSE
+# 9. GENERATE ANSWER
 # --------------------------------
 
 if question:
-
-    # Display user question
-
-    with st.chat_message("user", avatar="🧭"):
-
-        st.markdown(question)
 
     st.session_state.messages.append(
         {
@@ -235,94 +208,69 @@ if question:
         }
     )
 
-    # AI RESPONSE
+    with st.chat_message("user", avatar="🧭"):
+
+        st.markdown(question)
 
     with st.chat_message("assistant", avatar="🏛️"):
 
-        if not api_key:
+        try:
 
-            st.error(
-                "Please configure your Groq API key."
-            )
+            with st.spinner(
+                "🔍 Searching Karnataka tourism information..."
+            ):
 
-        elif not os.path.exists("karnataka_docs") or not any(
-            name.lower().endswith(".pdf")
-            for name in os.listdir("karnataka_docs")
-        ):
+                index, chunks, model = initialize_rag()
 
-            st.warning(
-                "Please add your PDF files inside Data_files folder."
-            )
-
-        else:
-
-            try:
-
-                with st.spinner(
-                    "🔍 Searching Karnataka information..."
-                ):
-
-                    # Load database
-
-                    index, chunks, model = initialize_rag()
-
-                    # Retrieve information
-
-                    results = retrieve_context(
-                        question,
-                        index,
-                        chunks,
-                        model
-                    )
-
-                    # Generate answer
-
-                    answer = generate_answer(
-                        question,
-                        results,
-                        api_key
-                    )
-
-                # Display answer
-
-                st.markdown(answer)
-
-                # Display sources
-
-                st.markdown("### 📚 Sources")
-
-                sources = set()
-
-                for item in results:
-
-                    sources.add(
-                        item["source"]
-                        + " - Page "
-                        + str(item["page"])
-                    )
-
-                for source in sources:
-
-                    st.write("📄", source)
-
-                # Save assistant message
-
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": answer
-                    }
+                results = retrieve_context(
+                    question,
+                    index,
+                    chunks,
+                    model
                 )
 
-            except Exception as error:
-
-                st.error(
-                    f"Error occurred: {error}"
+                answer = generate_answer(
+                    question,
+                    results,
+                    api_key
                 )
+
+            st.markdown(answer)
+
+            st.markdown("### 📚 Sources")
+
+            sources = set()
+
+            for item in results:
+
+                sources.add(
+                    f'{item["source"]} - Page {item["page"]}'
+                )
+
+            for source in sources:
+
+                st.write("📄", source)
+
+            full_response = answer + "\n\n**Sources:**\n"
+
+            for source in sources:
+
+                full_response += f"\n- {source}"
+
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": full_response
+                }
+            )
+
+        except Exception as error:
+
+            st.error(f"Something went wrong: {error}")
 
 
 # --------------------------------
-# 9. FOOTER
+# 10. FOOTER
 # --------------------------------
 
 st.divider()
