@@ -32,7 +32,7 @@ st.set_page_config(
 def initialize_rag():
 
     index, chunks, model = load_vector_store(
-        "Data_files"
+        "karnataka_docs"
     )
 
     return index, chunks, model
@@ -108,7 +108,7 @@ with st.sidebar:
 
     st.divider()
 
-    # DATA FILES
+    # karnataka_docs
 
     st.subheader("📚 Knowledge Base")
 
@@ -132,7 +132,7 @@ with st.sidebar:
 
     st.write(
         """
-        1. Jyothi
+        1. Jyothi H G
 
         2. Aishwarya
 
@@ -245,9 +245,9 @@ if question:
                 "Please configure your Groq API key."
             )
 
-        elif not os.path.exists("Data_files") or not any(
+        elif not os.path.exists("karnataka_docs") or not any(
             name.lower().endswith(".pdf")
-            for name in os.listdir("Data_files")
+            for name in os.listdir("karnataka_docs")
         ):
 
             st.warning(
