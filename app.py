@@ -92,10 +92,17 @@ with st.sidebar:
 
     st.divider()
 
-    st.subheader("👥 Team Members")
+st.subheader("👥 Our Team Members")
 
-    for number in range(1, 6):
-        st.write(f"{number}. Member {number}")
+team_members = [
+    "Chaithra B H",
+    "Jyothi H G",
+    "Aishwarya",
+    "Madhav U",
+]
+
+for number, name in enumerate(team_members, start=1):
+    st.write(f"**{number}.** {name}")
 
 
 # --------------------------------
