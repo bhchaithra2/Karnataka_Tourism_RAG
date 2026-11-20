@@ -101,8 +101,8 @@ with st.sidebar:
         "Madhav U",
      ]
 
-for number, name in enumerate(team_members, start=1):
-    st.write(f"**{number}.** {name}")
+     for number, name in enumerate(team_members, start=1):
+         st.write(f"**{number}.** {name}")
 
 
 # --------------------------------
