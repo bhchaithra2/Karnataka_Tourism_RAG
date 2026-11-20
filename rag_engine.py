@@ -1,4 +1,4 @@
-import os
+
 import faiss
 import numpy as np
 
@@ -9,14 +9,33 @@ from groq import Groq
 
 
 # --------------------------------
-# 1. LOAD PDF FILES
+# 1. FIND PDF FILES
+# --------------------------------
+
+def find_pdf_files(data_folder):
+
+    folder = Path(data_folder)
+
+    pdf_files = list(folder.rglob("*.pdf"))
+
+    return pdf_files
+
+
+# --------------------------------
+# 2. LOAD PDF FILES
 # --------------------------------
 
 def load_pdf(data_folder):
 
     all_pages = []
 
-    pdf_files = Path(data_folder).glob("*.pdf")
+    pdf_files = find_pdf_files(data_folder)
+
+    if not pdf_files:
+
+        raise ValueError(
+            "No PDF files found in the project folder."
+        )
 
     for pdf_path in pdf_files:
 
@@ -29,19 +48,27 @@ def load_pdf(data_folder):
             if text.strip():
 
                 all_pages.append({
+
                     "text": text,
+
                     "source": pdf_path.name,
+
                     "page": page_number + 1
+
                 })
 
     return all_pages
 
 
 # --------------------------------
-# 2. TEXT CHUNKING
+# 3. CREATE TEXT CHUNKS
 # --------------------------------
 
-def create_chunks(pages, chunk_size=500, overlap=50):
+def create_chunks(
+    pages,
+    chunk_size=800,
+    overlap=100
+):
 
     chunks = []
 
@@ -60,9 +87,13 @@ def create_chunks(pages, chunk_size=500, overlap=50):
             if chunk_text:
 
                 chunks.append({
+
                     "text": chunk_text,
+
                     "source": page["source"],
+
                     "page": page["page"]
+
                 })
 
             start += chunk_size - overlap
@@ -71,16 +102,20 @@ def create_chunks(pages, chunk_size=500, overlap=50):
 
 
 # --------------------------------
-# 3. GENERATE EMBEDDINGS
+# 4. CREATE EMBEDDINGS
 # --------------------------------
 
 def create_embeddings(chunks, model):
 
-    texts = [chunk["text"] for chunk in chunks]
+    texts = [
+        chunk["text"]
+        for chunk in chunks
+    ]
 
     embeddings = model.encode(
         texts,
-        convert_to_numpy=True
+        convert_to_numpy=True,
+        show_progress_bar=False
     )
 
     embeddings = np.asarray(
@@ -94,7 +129,7 @@ def create_embeddings(chunks, model):
 
 
 # --------------------------------
-# 4. CREATE FAISS DATABASE
+# 5. CREATE FAISS DATABASE
 # --------------------------------
 
 def create_vector_database(embeddings):
@@ -109,7 +144,7 @@ def create_vector_database(embeddings):
 
 
 # --------------------------------
-# 5. LOAD COMPLETE RAG SYSTEM
+# 6. LOAD COMPLETE RAG SYSTEM
 # --------------------------------
 
 def load_vector_store(data_folder):
@@ -121,7 +156,7 @@ def load_vector_store(data_folder):
     if not pages:
 
         raise ValueError(
-            "No readable PDF text found in Data_files."
+            "PDF files contain no readable text."
         )
 
     print("Creating text chunks...")
@@ -130,7 +165,9 @@ def load_vector_store(data_folder):
 
     if not chunks:
 
-        raise ValueError("No text chunks created.")
+        raise ValueError(
+            "No text chunks created."
+        )
 
     print("Loading embedding model...")
 
@@ -157,7 +194,7 @@ def load_vector_store(data_folder):
 
 
 # --------------------------------
-# 6. RETRIEVE RELEVANT INFORMATION
+# 7. RETRIEVE INFORMATION
 # --------------------------------
 
 def retrieve_context(
@@ -197,7 +234,7 @@ def retrieve_context(
 
 
 # --------------------------------
-# 7. GENERATE ANSWER USING GROQ LLM
+# 8. GENERATE ANSWER USING GROQ
 # --------------------------------
 
 def generate_answer(
@@ -224,19 +261,21 @@ def generate_answer(
     prompt = f"""
     You are a helpful Karnataka Tourism Assistant.
 
-    Answer the user's question using only the
-    information provided in the context.
+    Answer the user's question using the information
+    available in the supplied context.
+
+    Explain in simple and clear English.
 
     If the answer is not available in the context,
-    clearly say that the information is not available
-    in the uploaded documents.
-
-    Give simple, clear and useful answers.
+    say that the uploaded documents do not contain
+    enough information to answer the question.
 
     CONTEXT:
+
     {context}
 
     USER QUESTION:
+
     {question}
 
     ANSWER:
